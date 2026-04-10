@@ -1,5 +1,6 @@
 pub mod config;
 pub mod discovery;
+pub mod fixer;
 pub mod linter;
 pub mod model;
 pub mod output;

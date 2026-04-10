@@ -209,17 +209,17 @@ Note on E035: secret detection uses regex patterns for AWS keys, GitHub tokens, 
 | `W015` | `.env` file present in skill directory |
 | `W016` | No LICENSE file present |
 | `W017` | Large binary files (> 1MB) in skill directory |
-| `W019` | Scripts contain interactive prompt patterns (`input()`, `readline()`, `read -p`) |
-| `W020` | Deprecated `{baseDir}` placeholder in content |
-| `W021` | Description matches known vague anti-patterns ("Helps with X", "A tool for X") |
-| `W022` | Body contains generic explanations the agent already knows (detected via common filler phrases) |
-| `W023` | Multiple SKILL.md files in nested subdirectories (nested skills) |
-| `W028` | Description lacks action verbs |
-| `W029` | Reference files exist but are never mentioned in SKILL.md body (orphaned) |
-| `W030` | SKILL.md references files but doesn't describe when to load them (missing conditional loading) |
-| `W031` | Bash scripts lack `set -e`, Python scripts lack error handling patterns |
-| `W032` | Scripts contain hardcoded absolute paths |
-| `W033` | Scripts have no `--help` or usage documentation |
+| `W018` | Scripts contain interactive prompt patterns (`input()`, `readline()`, `read -p`) |
+| `W019` | Deprecated `{baseDir}` placeholder in content |
+| `W020` | Description matches known vague anti-patterns ("Helps with X", "A tool for X") |
+| `W021` | Body contains generic explanations the agent already knows (detected via common filler phrases) |
+| `W022` | Multiple SKILL.md files in nested subdirectories (nested skills) |
+| `W023` | Description lacks action verbs |
+| `W024` | Reference files exist but are never mentioned in SKILL.md body (orphaned) |
+| `W025` | SKILL.md references files but doesn't describe when to load them (missing conditional loading) |
+| `W026` | Bash scripts lack `set -e`, Python scripts lack error handling patterns |
+| `W027` | Scripts contain hardcoded absolute paths |
+| `W028` | Scripts have no `--help` or usage documentation |
 
 #### Quality/Info (Score Inputs)
 
@@ -246,17 +246,17 @@ These rules require heuristic analysis and may produce false positives. Enable w
 
 | Rule | Description |
 |------|-------------|
-| `W024` | Skill body covers multiple unrelated domains (H2 topic cluster analysis) |
-| `W025` | Inconsistent library/API naming within body |
-| `W026` | Contradictory instructions detected |
-| `W027` | Code examples in body have syntax errors (bracket/quote matching) |
+| `W029` | Skill body covers multiple unrelated domains (H2 topic cluster analysis) |
+| `W030` | Inconsistent library/API naming within body |
+| `W031` | Contradictory instructions detected |
+| `W032` | Code examples in body have syntax errors (bracket/quote matching) |
 | `I013` | Description contains "and" joining unrelated capabilities (composability signal) |
 | `I014` | Description doesn't cover implicit trigger scenarios |
 | `E036` | Script files fail syntax validation (opt-in, requires runtime: `python`, `bash -n`, `node --check`). Skipped gracefully if runtime unavailable. |
 
-**Tier 1 total: 35 errors + 27 warnings + 14 info = 76 rules**
+**Tier 1 total: 35 errors + 28 warnings + 14 info = 77 rules**
 **Tier 2 total: 1 error + 4 warnings + 2 info = 7 rules**
-**Grand total: 83 rules**
+**Grand total: 84 rules**
 
 ## Fix Mode
 
@@ -295,10 +295,10 @@ Built from weighted category scores. Weights are configurable in `.skillplane.to
 | Category | Default Weight | Inputs |
 |----------|---------------|--------|
 | **Spec Compliance** | 40% | All E-rules. Binary per rule — any error = 0 for that rule. Score = % passing. |
-| **Description Quality** | 20% | Length (W003), trigger language (W004/W005), imperative voice, anti-patterns (W021), action verbs (W028), keyword diversity (I015) |
-| **Content Efficiency** | 15% | Line count (W001), token estimate (W002), progressive disclosure ratio (I016), orphaned references (W029), conditional loading (W030) |
-| **Composability & Clarity** | 10% | No contradictions (W026 when enabled), consistent naming, no generic filler (W022) |
-| **Script Quality** | 10% | Error handling (W031), no hardcoded paths (W032), help docs (W033), no interactive prompts (W019), structured output (I009). **If no scripts exist, this category scores 100%** (not penalized). |
+| **Description Quality** | 20% | Length (W003), trigger language (W004/W005), imperative voice, anti-patterns (W020), action verbs (W023), keyword diversity (I015) |
+| **Content Efficiency** | 15% | Line count (W001), token estimate (W002), progressive disclosure ratio (I016), orphaned references (W024), conditional loading (W025) |
+| **Composability & Clarity** | 10% | No contradictions (Tier 2 W031 when enabled), consistent naming, no generic filler (W021) |
+| **Script Quality** | 10% | Error handling (W026), no hardcoded paths (W027), help docs (W028), no interactive prompts (W018), structured output (I009). **If no scripts exist, this category scores 100%** (not penalized). |
 | **Discoverability** | 5% | License present (I012), references dir (I002), gotchas section (I005), validation loops (I006) |
 
 ### Score Model

@@ -23,7 +23,7 @@ fn fixture_path(name: &str) -> PathBuf {
 fn test_check_valid_skill() {
     let fixture = fixture_path("valid-skill");
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", fixture.to_str().unwrap()]);
 
     cmd.assert()
@@ -42,7 +42,7 @@ fn test_check_missing_skill() {
     let empty_dir = tmp.path().join("empty");
     fs::create_dir_all(&empty_dir).unwrap();
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", empty_dir.to_str().unwrap()]);
 
     cmd.assert()
@@ -59,7 +59,7 @@ fn test_check_missing_skill() {
 fn test_check_json_format() {
     let fixture = fixture_path("valid-skill");
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", fixture.to_str().unwrap(), "--format", "json"]);
 
     let output = cmd.assert().success().get_output().stdout.clone();
@@ -87,7 +87,7 @@ fn test_check_json_format() {
 fn test_check_quiet_mode() {
     let fixture = fixture_path("valid-skill");
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", fixture.to_str().unwrap(), "--quiet"]);
 
     cmd.assert()
@@ -103,7 +103,7 @@ fn test_check_quiet_mode() {
 fn test_check_no_score() {
     let fixture = fixture_path("valid-skill");
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", fixture.to_str().unwrap(), "--no-score"]);
 
     cmd.assert()
@@ -119,7 +119,7 @@ fn test_check_no_score() {
 fn test_check_min_score_pass() {
     let fixture = fixture_path("valid-skill");
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", fixture.to_str().unwrap(), "--min-score", "50"]);
 
     cmd.assert().success();
@@ -133,7 +133,7 @@ fn test_check_min_score_pass() {
 fn test_check_min_score_fail() {
     let fixture = fixture_path("valid-skill");
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["check", fixture.to_str().unwrap(), "--min-score", "100"]);
 
     cmd.assert().failure().code(2);
@@ -154,7 +154,7 @@ fn test_fix_dry_run() {
     let original_content = "# Bad Skill\n\nNo frontmatter here.\n";
     fs::write(&skill_md, original_content).unwrap();
 
-    let mut cmd = Command::cargo_bin("skillplane").unwrap();
+    let mut cmd = Command::cargo_bin("skillmark").unwrap();
     cmd.args(["fix", skill_dir.to_str().unwrap(), "--dry-run"]);
 
     cmd.assert()

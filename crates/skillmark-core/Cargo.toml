@@ -1,11 +1,11 @@
 [package]
-name = "skillplane-core"
+name = "skillmark-core"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "Core library for skillplane — Agent Skills linter, validator, and scorer"
+description = "Core library for skillmark — Agent Skills linter, validator, and scorer"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

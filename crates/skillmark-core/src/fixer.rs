@@ -145,7 +145,7 @@ pub fn fix_skill(skill_dir: &Path, dry_run: bool) -> FixResult {
         //   1. Write updated content to a temp file.
         //   2. Rename the original to the canonical uppercase name via a
         //      round-trip through a temporary name to force the case change.
-        let tmp_path = skill_dir.join("__skillplane_tmp__.md");
+        let tmp_path = skill_dir.join("__skillmark_tmp__.md");
         if let Err(_e) = fs::write(&tmp_path, &content) {
             return FixResult::no_change();
         }

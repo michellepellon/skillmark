@@ -164,7 +164,7 @@ impl Config {
     pub fn load(start_dir: &Path) -> Self {
         let mut current = start_dir.to_path_buf();
         loop {
-            let candidate = current.join(".skillplane.toml");
+            let candidate = current.join(".skillmark.toml");
             if candidate.is_file() {
                 if let Ok(contents) = std::fs::read_to_string(&candidate) {
                     if let Ok(cfg) = toml::from_str::<Config>(&contents) {

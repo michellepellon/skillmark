@@ -1,13 +1,13 @@
-- id: skillplane
-  name: skillplane check
-  entry: skillplane check --no-score --quiet --fail-on errors
+- id: skillmark
+  name: skillmark check
+  entry: skillmark check --no-score --quiet --fail-on errors
   language: system
   files: '(?i)skill\.md$'
   pass_filenames: false
 
-- id: skillplane-fix
-  name: skillplane fix
-  entry: skillplane fix
+- id: skillmark-fix
+  name: skillmark fix
+  entry: skillmark fix
   language: system
   files: '(?i)skill\.md$'
   pass_filenames: false

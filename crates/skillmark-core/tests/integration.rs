@@ -1,9 +1,9 @@
 use std::path::Path;
-use skillplane_core::config::Config;
-use skillplane_core::discovery::load_skill;
-use skillplane_core::linter::lint;
-use skillplane_core::scorer::score;
-use skillplane_core::validator::validate;
+use skillmark_core::config::Config;
+use skillmark_core::discovery::load_skill;
+use skillmark_core::linter::lint;
+use skillmark_core::scorer::score;
+use skillmark_core::validator::validate;
 
 #[test]
 fn test_full_pipeline_valid_skill() {
@@ -15,7 +15,7 @@ fn test_full_pipeline_valid_skill() {
     // Validate
     let errors = validate(&fixture);
     let error_count = errors.iter()
-        .filter(|d| d.severity == skillplane_core::model::Severity::Error)
+        .filter(|d| d.severity == skillmark_core::model::Severity::Error)
         .count();
     assert_eq!(error_count, 0, "Expected no errors, got: {errors:?}");
 

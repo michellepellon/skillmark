@@ -33,7 +33,7 @@ pub fn format_terminal(skills: &[SkillReport], quiet: bool) -> String {
 
         if !quiet {
             // Header
-            out.push_str(&format!("skillplane {} — {}\n\n", VERSION, skill_dir_name));
+            out.push_str(&format!("skillmark {} — {}\n\n", VERSION, skill_dir_name));
 
             // Score block
             if let Some(score) = &report.score {
@@ -230,7 +230,7 @@ mod tests {
         let output = format_terminal(&[report], false);
 
         // Header present
-        assert!(output.contains("skillplane v0.1.0 — my-skill"), "missing header");
+        assert!(output.contains("skillmark v0.1.0 — my-skill"), "missing header");
 
         // Score line present
         assert!(output.contains("Score: 77/100 (C)"), "missing score line");
@@ -271,7 +271,7 @@ mod tests {
         assert!(!output.contains("Score:"), "quiet mode should not show score");
 
         // No header
-        assert!(!output.contains("skillplane"), "quiet mode should not show header");
+        assert!(!output.contains("skillmark"), "quiet mode should not show header");
 
         // No summary line
         assert!(!output.contains("warnings,"), "quiet mode should not show summary");

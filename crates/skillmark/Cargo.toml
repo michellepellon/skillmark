@@ -1,14 +1,14 @@
 [package]
-name = "skillplane"
+name = "skillmark"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
-description = "CLI for skillplane — Agent Skills linter, validator, and scorer"
+description = "CLI for skillmark — Agent Skills linter, validator, and scorer"
 
 [dependencies]
-skillplane-core = { path = "../skillplane-core" }
+skillmark-core = { path = "../skillmark-core" }
 clap = { version = "4", features = ["derive"] }
 colored = "2"
 toml = "0.8"

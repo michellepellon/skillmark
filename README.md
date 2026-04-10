@@ -1,4 +1,4 @@
-# skillplane
+# skillmark
 
 CI-native linter, validator, and quality scorer for [Agent Skills](https://agentskills.io) (`SKILL.md`).
 
@@ -6,29 +6,29 @@ CI-native linter, validator, and quality scorer for [Agent Skills](https://agent
 - **Quality scoring** — 0-100 composite score across 6 weighted categories, letter grades A-F
 - **4 output formats** — terminal (colored), JSON, SARIF (GitHub code annotations), Markdown (PR comments)
 - **Fix mode** — auto-repair 6 common issues with `--dry-run` preview
-- **CI-native** — GitHub Action, pre-commit hook, configurable via `.skillplane.toml`
+- **CI-native** — GitHub Action, pre-commit hook, configurable via `.skillmark.toml`
 
 ## Quick Start
 
 ```bash
 # Install
-cargo install skillplane
+cargo install skillmark
 
 # Check a skill
-skillplane check path/to/my-skill
+skillmark check path/to/my-skill
 
 # Check all skills in a repo
-skillplane check
+skillmark check
 
 # Fix issues
-skillplane fix path/to/my-skill --dry-run
-skillplane fix path/to/my-skill
+skillmark fix path/to/my-skill --dry-run
+skillmark fix path/to/my-skill
 ```
 
 ## Example Output
 
 ```
-skillplane v0.1.0 — my-skill
+skillmark v0.1.0 — my-skill
 
   Score: 92/100 (A)
 
@@ -45,20 +45,20 @@ skillplane v0.1.0 — my-skill
 ## GitHub Action
 
 ```yaml
-- uses: michellepellon/skillplane@v1
+- uses: michellepellon/skillmark@v1
   with:
     min-score: '80'
     format: sarif
 
 - uses: github/codeql-action/upload-sarif@v3
   with:
-    sarif_file: skillplane.sarif
+    sarif_file: skillmark.sarif
 ```
 
 Or for PR comments:
 
 ```yaml
-- uses: michellepellon/skillplane@v1
+- uses: michellepellon/skillmark@v1
   with:
     min-score: '80'
     format: markdown
@@ -71,17 +71,17 @@ Or for PR comments:
 ```yaml
 # .pre-commit-config.yaml
 repos:
-  - repo: https://github.com/michellepellon/skillplane
+  - repo: https://github.com/michellepellon/skillmark
     rev: v0.1.0
     hooks:
-      - id: skillplane
-      - id: skillplane-fix
+      - id: skillmark
+      - id: skillmark-fix
         stages: [manual]
 ```
 
 ## Configuration
 
-Create `.skillplane.toml` in your repo root:
+Create `.skillmark.toml` in your repo root:
 
 ```toml
 fail-on = "errors"
@@ -106,8 +106,8 @@ exclude = ["drafts/", "vendor/"]
 ## CLI Reference
 
 ```
-skillplane check [PATHS...]    Validate, lint, and score skills
-skillplane fix [PATHS...]      Auto-repair fixable issues
+skillmark check [PATHS...]    Validate, lint, and score skills
+skillmark fix [PATHS...]      Auto-repair fixable issues
 
 Options:
   --format <FORMAT>     terminal | json | sarif | markdown  [default: terminal]
@@ -118,7 +118,7 @@ Options:
   --disable <RULES>     Comma-separated rule IDs to disable
   --experimental        Enable Tier 2 heuristic rules
   --exclude <GLOBS>     Comma-separated paths to exclude
-  --config <PATH>       Path to .skillplane.toml
+  --config <PATH>       Path to .skillmark.toml
   --fix                 Run fix mode (with check)
   --dry-run             Preview fixes without writing (with fix)
   --color <WHEN>        auto | always | never               [default: auto]

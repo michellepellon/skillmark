@@ -1,0 +1,10 @@
+[package]
+name = "skillplane"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CLI for skillplane — Agent Skills linter, validator, and scorer"
+
+[dependencies]
+skillplane-core = { path = "../skillplane-core" }

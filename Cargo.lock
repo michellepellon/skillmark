@@ -566,7 +566,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
-name = "skillplane"
+name = "skillmark"
 version = "0.1.0"
 dependencies = [
  "assert_cmd",
@@ -574,13 +574,13 @@ dependencies = [
  "colored",
  "predicates",
  "serde_json",
- "skillplane-core",
+ "skillmark-core",
  "tempfile",
  "toml",
 ]
 
 [[package]]
-name = "skillplane-core"
+name = "skillmark-core"
 version = "0.1.0"
 dependencies = [
  "insta",

@@ -1,6 +1,6 @@
-name: 'Skillplane'
+name: 'Skillmark'
 description: 'Lint, validate, and score Agent Skills (SKILL.md)'
-author: 'skillplane'
+author: 'skillmark'
 
 branding:
   icon: 'check-square'
@@ -54,17 +54,17 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Install skillplane
+    - name: Install skillmark
       shell: bash
       run: |
         VERSION="${{ inputs.version }}"
         if [ "$VERSION" = "latest" ]; then
-          cargo install skillplane
+          cargo install skillmark
         else
-          cargo install skillplane --version "$VERSION"
+          cargo install skillmark --version "$VERSION"
         fi
 
-    - name: Run skillplane
+    - name: Run skillmark
       id: run
       shell: bash
       run: |
@@ -81,7 +81,7 @@ runs:
           ARGS="$ARGS --experimental"
         fi
 
-        OUTPUT=$(skillplane $ARGS 2>&1) || EXIT_CODE=$?
+        OUTPUT=$(skillmark $ARGS 2>&1) || EXIT_CODE=$?
         echo "$OUTPUT"
 
         # Extract score from JSON output for outputs

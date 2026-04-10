@@ -78,7 +78,7 @@ pub fn format_sarif(skills: &[SkillReport]) -> String {
             {
                 "tool": {
                     "driver": {
-                        "name": "skillplane",
+                        "name": "skillmark",
                         "version": VERSION,
                         "rules": rules
                     }
@@ -158,7 +158,7 @@ mod tests {
         let run = &runs[0];
 
         // Tool driver
-        assert_eq!(run["tool"]["driver"]["name"], "skillplane");
+        assert_eq!(run["tool"]["driver"]["name"], "skillmark");
         assert_eq!(run["tool"]["driver"]["version"], VERSION);
 
         // Rules deduped

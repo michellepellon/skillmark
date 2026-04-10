@@ -4,18 +4,18 @@ use std::process;
 use clap::{Parser, Subcommand, ValueEnum};
 use colored::control::set_override;
 
-use skillplane_core::config::{Config, FailOn, OutputFormat};
-use skillplane_core::discovery::{discover_skills, load_skill};
-use skillplane_core::fixer::fix_skill;
-use skillplane_core::linter::lint;
-use skillplane_core::model::{Diagnostic, Severity};
-use skillplane_core::output::json::format_json;
-use skillplane_core::output::markdown::format_markdown;
-use skillplane_core::output::sarif::format_sarif;
-use skillplane_core::output::terminal::format_terminal;
-use skillplane_core::output::SkillReport;
-use skillplane_core::scorer::score;
-use skillplane_core::validator::validate;
+use skillmark_core::config::{Config, FailOn, OutputFormat};
+use skillmark_core::discovery::{discover_skills, load_skill};
+use skillmark_core::fixer::fix_skill;
+use skillmark_core::linter::lint;
+use skillmark_core::model::{Diagnostic, Severity};
+use skillmark_core::output::json::format_json;
+use skillmark_core::output::markdown::format_markdown;
+use skillmark_core::output::sarif::format_sarif;
+use skillmark_core::output::terminal::format_terminal;
+use skillmark_core::output::SkillReport;
+use skillmark_core::scorer::score;
+use skillmark_core::validator::validate;
 
 // ---------------------------------------------------------------------------
 // CLI definition
@@ -23,7 +23,7 @@ use skillplane_core::validator::validate;
 
 #[derive(Parser)]
 #[command(
-    name = "skillplane",
+    name = "skillmark",
     about = "Agent Skills linter, validator, and scorer",
     version
 )]
@@ -67,7 +67,7 @@ struct Cli {
     #[arg(long, global = true, value_delimiter = ',')]
     exclude: Vec<String>,
 
-    /// Path to .skillplane.toml
+    /// Path to .skillmark.toml
     #[arg(long, global = true)]
     config: Option<PathBuf>,
 }

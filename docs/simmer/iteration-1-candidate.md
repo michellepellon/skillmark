@@ -114,36 +114,6 @@ struct FileTree {
     files: Vec<PathBuf>,
     total_content_size: usize,  // For progressive disclosure ratio
 }
-
-/// A source location range for diagnostic annotations.
-struct Span {
-    start_line: usize,          // 1-based line number
-    start_col: usize,           // 1-based column (byte offset within line)
-    end_line: usize,            // 1-based, inclusive
-    end_col: usize,             // 1-based, exclusive (points one past the last character)
-}
-
-/// A relative file path referenced from within the SKILL.md body
-/// (e.g., `scripts/deploy.sh` in a markdown link or bare path).
-struct FileReference {
-    path: String,               // The referenced relative path as written
-    span: Span,                 // Location of the reference in SKILL.md
-    exists: bool,               // Whether the target file exists on disk (populated during parsing)
-}
-
-/// A markdown heading extracted from the body for structure analysis.
-struct Heading {
-    level: u8,                  // 1-6 (H1-H6)
-    text: String,               // Heading text content (stripped of `#` prefix and inline formatting)
-    span: Span,                 // Location in SKILL.md
-}
-
-/// A fenced code block extracted from the body.
-struct CodeBlock {
-    language: Option<String>,   // Language tag after opening ```, if present (e.g., "bash", "python")
-    content: String,            // Raw content between the fences (not including the fence lines)
-    span: Span,                 // Location of the opening ``` line in SKILL.md
-}
 ```
 
 Design decisions:
@@ -152,7 +122,6 @@ Design decisions:
 - `metadata` and `allowed_tools` are parsed as raw `serde_yaml::Value` so the validator can inspect their structure and produce specific diagnostics (E022-E024 for metadata, E025/E029 for allowed-tools) rather than failing silently at deserialization.
 - Token estimation uses `split_whitespace().count() / 0.75` — documented as approximate, based on the industry rule of thumb that one token is roughly 0.75 words.
 - File references extracted from markdown body by matching relative paths in links and bare paths.
-- `Span` uses 1-based line/column numbers to match SARIF and editor conventions. For structural rules that apply to the entire file or directory (E001, E033), the diagnostic's `span` field is `None`.
 
 ## Diagnostics Model
 
@@ -330,7 +299,7 @@ Built from weighted category scores. Weights are configurable in `.skillplane.to
 | **Spec Compliance** | 40% | All E-rules. Binary per rule — any error = 0 for that rule. Score = % passing. |
 | **Description Quality** | 20% | Length (W003), trigger language (W004/W005), imperative voice, anti-patterns (W020), action verbs (W023), keyword diversity (I015) |
 | **Content Efficiency** | 15% | Line count (W001), token estimate (W002), progressive disclosure ratio (I016), orphaned references (W024), conditional loading (W025) |
-| **Composability & Clarity** | 10% | Structured headings (W009), no placeholder text (W006), no generic filler (W021); Tier 2 adds contradictions (W031) |
+| **Composability & Clarity** | 10% | No contradictions (Tier 2 W031 when enabled), consistent naming, no generic filler (W021) |
 | **Script Quality** | 10% | Error handling (W026), no hardcoded paths (W027), help docs (W028), no interactive prompts (W018), structured output (I009). **If no scripts exist, this category scores 100%** (not penalized). |
 | **Discoverability** | 5% | License present (I012), references dir (I002), gotchas section (I005), validation loops (I006) |
 
@@ -349,8 +318,6 @@ composite = sum(weighted_contribution for each category)
 Where:
 - `passing_checks` = number of rules in that category that did NOT fire
 - `total_checks` = number of applicable (non-disabled, non-suppressed) rules in that category
-
-**Rounding:** Per-category scores are stored as `f64` for calculation. The final composite score is rounded to the nearest integer (`composite.round() as u32`) for display and grade assignment. For example, a raw composite of 79.5 displays as 80 and receives grade B.
 
 #### Spec Compliance (weight: 0.40)
 
@@ -468,47 +435,9 @@ Using the per-category results from the examples above:
 | Composability & Clarity | 66.7% | 0.10 | 6.7 |
 | Script Quality | 60.0% | 0.10 | 6.0 |
 | Discoverability | 50.0% | 0.05 | 2.5 |
-| **Composite** | | | **74.9 -> 75** |
+| **Composite** | | | **74.9** |
 
-Composite rounds to **75**. Grade: **C** (70-79 range).
-
-**Complete rule trace for this example (2 errors, 8 warnings):**
-
-Errors:
-1. E030 — Unknown field in frontmatter
-2. E031 — File reference points to nonexistent file
-
-Warnings:
-1. W003 — Description is very short (< 50 chars)
-2. W004 — Description lacks trigger language
-3. W021 — Body contains generic filler content
-4. W026 — Scripts lack error handling (`set -e`)
-5. W028 — Scripts lack `--help`/usage docs
-
-Info (score inputs, not counted as warnings):
-1. I015 — Keyword diversity < 2 trigger scenarios
-2. I016 — Progressive disclosure ratio is 0%
-3. I005 — No gotchas/pitfalls section
-4. I006 — No validation/verification step
-5. I002 — No `references/` directory (note: the worked example for Discoverability says DS2 passes — see reconciliation below)
-
-**Reconciliation note:** The per-category worked examples describe a *single hypothetical skill* with these combined properties: has an unknown field "autor", references nonexistent `scripts/deploy.sh`, has a 38-char description with no trigger language but imperative voice with action verbs covering 1 scenario, has 200 lines/2000 tokens, no referenced files, has headings but generic filler and no placeholders, has scripts without `set -e` or `--help`, and has a LICENSE file + references dir but no gotchas or validation section. The exact diagnostics that fire:
-
-| # | Rule | Severity | Category |
-|---|------|----------|----------|
-| 1 | E030 | Error | Spec Compliance |
-| 2 | E031 | Error | Spec Compliance |
-| 3 | W003 | Warning | Description Quality |
-| 4 | W004 | Warning | Description Quality |
-| 5 | W021 | Warning | Composability & Clarity |
-| 6 | W026 | Warning | Script Quality |
-| 7 | W028 | Warning | Script Quality |
-| 8 | I015 | Info | Description Quality |
-| 9 | I016 | Info | Content Efficiency |
-| 10 | I005 | Info | Discoverability |
-| 11 | I006 | Info | Discoverability |
-
-**Total: 2 errors, 5 warnings, 4 info. Terminal summary line shows "5 warnings, 2 errors"** (info-severity diagnostics are not counted in the warning/error tallies but do affect scoring).
+Grade: **C** (70-79 range)
 
 ### Score Model
 
@@ -535,7 +464,7 @@ struct RuleResult {
 enum Grade { A, B, C, D, F }
 ```
 
-Default grade boundaries (configurable in `.skillplane.toml`). Grade is assigned from the **rounded** composite score:
+Default grade boundaries (configurable in `.skillplane.toml`):
 - A: 90-100
 - B: 80-89
 - C: 70-79
@@ -643,8 +572,6 @@ Precedence: `1` > `2` > `3`. If both errors exist and score is below threshold, 
 
 ### Terminal Output
 
-Matches the end-to-end worked example (2 errors, 5 warnings, 4 info):
-
 ```
 skillplane v0.1.0 — my-skill
 
@@ -657,18 +584,14 @@ skillplane v0.1.0 — my-skill
   Script Quality     ████████████░░░░░░░░   60%   (6.0/10)
   Discoverability    ██████████░░░░░░░░░░   50%   (2.5/5)
 
-  5 warnings, 2 errors
+  8 warnings, 2 errors
 
   E030  SKILL.md:1   Unknown field "autor" in frontmatter
   E031  SKILL.md:45  File reference "scripts/deploy.sh" does not exist
   W003  SKILL.md:2   Description is very short (38 chars, recommend >= 50)
   W004  SKILL.md:2   Description lacks trigger language ("Use when...")
-  W021  SKILL.md:18  Body contains generic filler content (2 filler phrases detected)
-  W026  scripts/build.sh:1  Bash script lacks "set -e" or equivalent error handling
-  W028  scripts/build.sh:1  Script has no --help or usage documentation
+  W024  —            references/api.md exists but is not referenced in SKILL.md
 ```
-
-Info-severity diagnostics (I015, I016, I005, I006) affect scoring but are not printed in default terminal output. Use `--format json` or `-v` (verbose, if implemented) to see all diagnostics including info.
 
 ### Usage Examples
 
@@ -825,23 +748,6 @@ repos:
 
 Requires `skillplane` binary on `PATH` (via `cargo install skillplane`).
 
-## Implementation Order
-
-Recommended build sequence for Tier 1 (v0.1). Each phase builds on the previous one and produces a testable milestone.
-
-| Phase | Components | Milestone |
-|-------|-----------|-----------|
-| **1. Parse** | `model.rs`, `parser.rs` | Can parse any SKILL.md into a `Skill` struct; snapshot tests for valid/malformed inputs |
-| **2. Validate** | `validator.rs` (E001-E035), `diagnostics model` | Runs all spec-compliance checks; produces `Vec<Diagnostic>` |
-| **3. Lint** | `linter.rs` (W001-W028), `discovery.rs` | Adds best-practice warnings; can discover and lint a directory tree |
-| **4. Score** | `scorer.rs`, `config.rs` | Computes composite score + grade; loads `.skillplane.toml` for weight/grade overrides |
-| **5. Output** | `terminal.rs`, `json.rs`, `sarif.rs`, `markdown.rs` | All four output formats working |
-| **6. CLI** | `main.rs` (clap), exit codes, `--format`/`--min-score`/`--fail-on`/`--disable` flags | Fully usable CLI binary |
-| **7. Fix** | `fixer.rs`, `--fix`/`--dry-run` | Auto-repair for the 6 fixable rules |
-| **8. Distribute** | `action.yml`, `.pre-commit-hooks.yaml`, CI release pipeline | GitHub Action + pre-commit hook + binary releases |
-
-Within each phase, implement rules in order of their rule ID (E001 before E002, etc.). Write tests alongside each rule using fixture skills in `tests/fixtures/`.
-
 ## Rust Dependencies
 
 ### Runtime
@@ -868,324 +774,6 @@ Within each phase, implement rules in order of their rule ID (E001 before E002, 
 | `predicates` | Assertion helpers for CLI output |
 
 No heavy dependencies. No tokenizer library (whitespace heuristic). No markdown AST parser (raw line processing for headings, code fences, references). Keeps the binary small and compile times fast.
-
-## Appendix A: Detection Patterns
-
-Exact string/regex patterns for every heuristic rule. All pattern matching is case-insensitive unless noted. Patterns are applied after stripping markdown formatting (links, emphasis markers) from the target text.
-
-### W004 — Trigger Language Detection
-
-**Fires when:** The `description` field does NOT match any of the following trigger phrase patterns.
-
-```
-Trigger phrases (match at any position in description):
-  /\buse\s+(this\s+skill\s+)?when\b/i
-  /\bwhen\s+the\s+(user|developer|agent)\b/i
-  /\bactivate\s+(this\s+)?(skill\s+)?(when|for|if)\b/i
-  /\binvoke\s+(this\s+)?(skill\s+)?(when|for|if)\b/i
-  /\btrigger(s|ed)?\s+(when|on|by)\b/i
-  /\bapplies?\s+(when|to|if)\b/i
-```
-
-A description passes W004 if it matches at least one of these patterns.
-
-### W005 — Passive Voice Detection
-
-**Fires when:** The `description` field starts with a passive-voice prefix AND does not also contain trigger language (W004 patterns).
-
-```
-Passive-voice prefix patterns (must match at start of description):
-  /^this\s+skill\s+(is|was|will|can|should|does|provides|helps|allows|enables|handles|manages|performs)/i
-  /^(is|was|will\s+be)\s+used\s+(to|for|when)/i
-  /^(a|an|the)\s+(skill|tool|helper|utility)\s+(that|which|for)/i
-  /^(provides?|offers?|gives?|enables?|allows?|helps?)\s/i
-  /^(designed|intended|meant|built|created)\s+(to|for)\b/i
-```
-
-### W020 — Vague Description Anti-Patterns
-
-**Fires when:** The `description` field matches any of these vague phrasing patterns.
-
-```
-Vague anti-patterns (match anywhere in description):
-  /^helps?\s+(with|the|you)\b/i
-  /^a\s+tool\s+(for|to|that)\b/i
-  /^an?\s+(useful|helpful|handy|simple|basic|generic)\s+(skill|tool)\b/i
-  /^(does|handles?)\s+(stuff|things|various|everything|anything)\b/i
-  /\b(various|miscellaneous|general[- ]purpose|multi[- ]purpose|all[- ]purpose)\s+(tasks?|things?|operations?|functions?)\b/i
-  /^(utility|helper)\s+(for|to|that|skill)\b/i
-```
-
-### W021 — Generic Filler Phrase Detection
-
-**Fires when:** The markdown body contains 2 or more distinct matches from the filler phrase list below (a single match is tolerated to reduce false positives).
-
-```
-Filler phrases (match anywhere in body, case-insensitive):
-  /\bas\s+you\s+(probably\s+)?(already\s+)?know\b/i
-  /\bit\s+is\s+(widely|generally|commonly)\s+known\s+that\b/i
-  /\b(remember|note|keep\s+in\s+mind)\s+that\s+(all|every|most)\b/i
-  /\bin\s+(today's|the\s+modern|the\s+current)\s+(world|landscape|ecosystem)\b/i
-  /\b(basically|essentially|fundamentally|obviously|clearly)\b/i  — only when NOT inside a code block
-  /\bthis\s+is\s+(important|crucial|critical|essential|vital)\s+because\b/i
-  /\b(best\s+practices?\s+dictate|industry\s+standard\s+is|it\s+is\s+recommended)\b/i
-  /\bfor\s+more\s+(information|details),?\s+see\s+(the\s+)?(official\s+)?documentation\b/i
-```
-
-Threshold: fires when `distinct_matches >= 2`. Each pattern counts at most once regardless of how many times it appears.
-
-### W023 — Action Verb Detection
-
-**Fires when:** The `description` field does NOT contain at least one word from the action verb list.
-
-```
-Action verb list (must appear as a whole word in description):
-  use, run, execute, invoke, call, apply, generate, create, build,
-  deploy, configure, set up, install, validate, check, lint, test,
-  format, transform, convert, parse, analyze, scan, detect, fix,
-  migrate, upgrade, refactor, optimize, monitor, debug, log, trace,
-  fetch, pull, push, sync, upload, download, export, import, send,
-  render, compile, bundle, serve, start, stop, restart, reset, clean,
-  scaffold, bootstrap, initialize, provision, authenticate, authorize
-```
-
-Pattern: `/\b(use|run|execute|invoke|call|apply|generate|create|build|deploy|configure|set\s+up|install|validate|check|lint|test|format|transform|convert|parse|analyze|scan|detect|fix|migrate|upgrade|refactor|optimize|monitor|debug|log|trace|fetch|pull|push|sync|upload|download|export|import|send|render|compile|bundle|serve|start|stop|restart|reset|clean|scaffold|bootstrap|initialize|provision|authenticate|authorize)\b/i`
-
-### E035 — Secret/Credential Detection
-
-**Fires when:** Any text file in the skill directory matches one or more of the following patterns. Binary files (detected by null byte in first 8192 bytes) are skipped.
-
-```
-Secret patterns (applied per-line to every text file in the skill directory):
-
-  # AWS Access Key ID (starts with AKIA)
-  /\bAKIA[0-9A-Z]{16}\b/
-
-  # AWS Secret Access Key (40 chars base64-ish after common prefixes)
-  /(?:aws_secret_access_key|secret_key)\s*[:=]\s*["']?[A-Za-z0-9/+=]{40}\b/i
-
-  # GitHub tokens (classic and fine-grained)
-  /\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,255}\b/
-  /\bgithub_pat_[A-Za-z0-9_]{22,255}\b/
-
-  # Generic private key header
-  /-----BEGIN\s+(RSA|EC|DSA|OPENSSH|PGP)?\s*PRIVATE\s+KEY-----/
-
-  # Generic high-entropy API key patterns
-  /(?:api[_-]?key|api[_-]?secret|auth[_-]?token|access[_-]?token|bearer)\s*[:=]\s*["']?[A-Za-z0-9_\-]{20,}\b/i
-
-  # Slack tokens
-  /\bxox[bpors]-[0-9]{10,}-[A-Za-z0-9_\-]{10,}\b/
-
-  # Generic password in assignment
-  /(?:password|passwd|pwd)\s*[:=]\s*["'][^"']{8,}["']/i
-```
-
-Lines inside YAML comments (`# ...`) and markdown code blocks with explicit `example` or `placeholder` language tags are excluded from scanning.
-
-### I015 — Keyword Diversity Score
-
-**Fires when:** The description covers fewer than 2 distinct trigger scenarios.
-
-Detection method: the description is scanned for **scenario indicator clauses** — independent segments that each describe a distinct use case. The count is determined by:
-
-1. Split the description on sentence boundaries (`. `, `; `, ` - `, newlines) and coordinating conjunctions used to join scenarios (`or when`, `also when`, `and when`, `as well as when`).
-2. Each segment that matches a trigger-like pattern (W004 pattern list, or starts with an imperative verb from the W023 list) counts as one scenario.
-3. Segments that are pure continuation of the same clause (e.g., subordinate clauses starting with `that`, `which`, `by`, `via`) do not count as additional scenarios.
-
-The rule fires (I015 diagnostic emitted) when `scenario_count < 2`. For scoring purposes (DQ6), the check passes when `scenario_count >= 2`.
-
-### I016 — Progressive Disclosure Ratio
-
-**Fires when:** 100% of the skill's text content is in SKILL.md with 0% in referenced files (ratio = 0.0).
-
-Detection method:
-
-1. Compute `skillmd_size` = byte length of the SKILL.md body (after frontmatter).
-2. Compute `referenced_size` = sum of byte lengths of all files in `scripts/`, `references/`, `examples/`, and `assets/` directories.
-3. `ratio = referenced_size / (skillmd_size + referenced_size)`.
-4. The rule fires when `ratio == 0.0` (i.e., `referenced_size == 0`).
-
-For scoring purposes (CE3), the check passes when `ratio > 0.0` (any non-zero amount of content in referenced files). The ratio value itself is reported in the I016 info diagnostic message for user visibility (e.g., "Progressive disclosure ratio: 0% of content in referenced files").
-
-## Appendix B: Output Schemas
-
-### JSON Output
-
-Produced by `--format json`. The top-level object contains one entry per skill path. All field names use snake_case.
-
-```json
-{
-  "version": "0.1.0",
-  "skills": [
-    {
-      "path": "skills/my-skill",
-      "score": {
-        "composite": 75,
-        "grade": "C",
-        "categories": [
-          {
-            "name": "spec_compliance",
-            "weight": 0.40,
-            "score": 94.3,
-            "weighted_score": 37.7,
-            "rule_results": [
-              { "rule_id": "E001", "passed": true },
-              { "rule_id": "E030", "passed": false },
-              { "rule_id": "E031", "passed": false }
-            ]
-          }
-        ]
-      },
-      "diagnostics": [
-        {
-          "rule_id": "E030",
-          "severity": "error",
-          "message": "Unknown field \"autor\" in frontmatter",
-          "path": "skills/my-skill/SKILL.md",
-          "span": {
-            "start_line": 1,
-            "start_col": 1,
-            "end_line": 1,
-            "end_col": 20
-          },
-          "fix_available": false,
-          "category": "spec_compliance"
-        },
-        {
-          "rule_id": "E001",
-          "severity": "error",
-          "message": "SKILL.md file missing",
-          "path": "skills/other-skill",
-          "span": null,
-          "fix_available": false,
-          "category": "spec_compliance"
-        }
-      ],
-      "summary": {
-        "errors": 2,
-        "warnings": 5,
-        "info": 4
-      }
-    }
-  ]
-}
-```
-
-Field types:
-- `version`: string — skillplane version that produced the output
-- `skills[].score.composite`: integer — rounded composite score (0-100)
-- `skills[].score.grade`: string — one of "A", "B", "C", "D", "F"
-- `skills[].score.categories[].score`: float — per-category percentage (0.0-100.0)
-- `skills[].score.categories[].weighted_score`: float — score * weight
-- `skills[].diagnostics[].span`: object | null — null for structural rules (E001, E033)
-- `skills[].diagnostics[].severity`: string — one of "error", "warning", "info"
-- `skills[].diagnostics[].category`: string — snake_case category name
-
-### SARIF Output
-
-Produced by `--format sarif`. Conforms to SARIF v2.1.0 for GitHub code scanning integration.
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-  "version": "2.1.0",
-  "runs": [
-    {
-      "tool": {
-        "driver": {
-          "name": "skillplane",
-          "version": "0.1.0",
-          "informationUri": "https://github.com/your-org/skillplane",
-          "rules": [
-            {
-              "id": "E030",
-              "shortDescription": { "text": "Unknown/unexpected fields in frontmatter" },
-              "defaultConfiguration": { "level": "error" }
-            }
-          ]
-        }
-      },
-      "results": [
-        {
-          "ruleId": "E030",
-          "level": "error",
-          "message": { "text": "Unknown field \"autor\" in frontmatter" },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": { "uri": "skills/my-skill/SKILL.md" },
-                "region": {
-                  "startLine": 1,
-                  "startColumn": 1,
-                  "endLine": 1,
-                  "endColumn": 20
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "E001",
-          "level": "error",
-          "message": { "text": "SKILL.md file missing" },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": { "uri": "skills/other-skill" }
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-Key mapping details:
-- `rule_id` maps to SARIF `ruleId` (e.g., "E030")
-- `Severity::Error` maps to SARIF `level: "error"`, `Warning` to `"warning"`, `Info` to `"note"`
-- When `span` is `None` (structural rules E001, E033): the SARIF `location` omits the `region` property entirely, using only `artifactLocation` with the directory path
-- When `span` is `Some`: the `region` object maps `start_line`/`start_col`/`end_line`/`end_col` to SARIF's `startLine`/`startColumn`/`endLine`/`endColumn`
-
-### Markdown Output
-
-Produced by `--format markdown`. Designed for GitHub job summaries and PR comments.
-
-```markdown
-## Skillplane Report — my-skill
-
-**Score: 75/100 (C)**
-
-| Category | Score | Weighted |
-|----------|-------|----------|
-| Spec Compliance | 94% | 37.7/40 |
-| Description Quality | 50% | 10.0/20 |
-| Content Efficiency | 80% | 12.0/15 |
-| Composability & Clarity | 67% | 6.7/10 |
-| Script Quality | 60% | 6.0/10 |
-| Discoverability | 50% | 2.5/5 |
-
-### Errors (2)
-
-| Rule | Location | Message |
-|------|----------|---------|
-| E030 | `SKILL.md:1` | Unknown field "autor" in frontmatter |
-| E031 | `SKILL.md:45` | File reference "scripts/deploy.sh" does not exist |
-
-### Warnings (5)
-
-| Rule | Location | Message |
-|------|----------|---------|
-| W003 | `SKILL.md:2` | Description is very short (38 chars, recommend >= 50) |
-| W004 | `SKILL.md:2` | Description lacks trigger language ("Use when...") |
-| W021 | `SKILL.md:18` | Body contains generic filler content (2 filler phrases detected) |
-| W026 | `scripts/build.sh:1` | Bash script lacks "set -e" or equivalent error handling |
-| W028 | `scripts/build.sh:1` | Script has no --help or usage documentation |
-```
-
-For multi-skill repos, each skill gets its own H2 section, followed by an aggregate summary section.
 
 ## References
 

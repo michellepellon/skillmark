@@ -114,36 +114,6 @@ struct FileTree {
     files: Vec<PathBuf>,
     total_content_size: usize,  // For progressive disclosure ratio
 }
-
-/// A source location range for diagnostic annotations.
-struct Span {
-    start_line: usize,          // 1-based line number
-    start_col: usize,           // 1-based column (byte offset within line)
-    end_line: usize,            // 1-based, inclusive
-    end_col: usize,             // 1-based, exclusive (points one past the last character)
-}
-
-/// A relative file path referenced from within the SKILL.md body
-/// (e.g., `scripts/deploy.sh` in a markdown link or bare path).
-struct FileReference {
-    path: String,               // The referenced relative path as written
-    span: Span,                 // Location of the reference in SKILL.md
-    exists: bool,               // Whether the target file exists on disk (populated during parsing)
-}
-
-/// A markdown heading extracted from the body for structure analysis.
-struct Heading {
-    level: u8,                  // 1-6 (H1-H6)
-    text: String,               // Heading text content (stripped of `#` prefix and inline formatting)
-    span: Span,                 // Location in SKILL.md
-}
-
-/// A fenced code block extracted from the body.
-struct CodeBlock {
-    language: Option<String>,   // Language tag after opening ```, if present (e.g., "bash", "python")
-    content: String,            // Raw content between the fences (not including the fence lines)
-    span: Span,                 // Location of the opening ``` line in SKILL.md
-}
 ```
 
 Design decisions:
@@ -152,7 +122,6 @@ Design decisions:
 - `metadata` and `allowed_tools` are parsed as raw `serde_yaml::Value` so the validator can inspect their structure and produce specific diagnostics (E022-E024 for metadata, E025/E029 for allowed-tools) rather than failing silently at deserialization.
 - Token estimation uses `split_whitespace().count() / 0.75` — documented as approximate, based on the industry rule of thumb that one token is roughly 0.75 words.
 - File references extracted from markdown body by matching relative paths in links and bare paths.
-- `Span` uses 1-based line/column numbers to match SARIF and editor conventions. For structural rules that apply to the entire file or directory (E001, E033), the diagnostic's `span` field is `None`.
 
 ## Diagnostics Model
 
@@ -350,8 +319,6 @@ Where:
 - `passing_checks` = number of rules in that category that did NOT fire
 - `total_checks` = number of applicable (non-disabled, non-suppressed) rules in that category
 
-**Rounding:** Per-category scores are stored as `f64` for calculation. The final composite score is rounded to the nearest integer (`composite.round() as u32`) for display and grade assignment. For example, a raw composite of 79.5 displays as 80 and receives grade B.
-
 #### Spec Compliance (weight: 0.40)
 
 **Checks:** E001 through E035 (35 rules in Tier 1). Each is binary: pass (0) or fail (1).
@@ -468,47 +435,9 @@ Using the per-category results from the examples above:
 | Composability & Clarity | 66.7% | 0.10 | 6.7 |
 | Script Quality | 60.0% | 0.10 | 6.0 |
 | Discoverability | 50.0% | 0.05 | 2.5 |
-| **Composite** | | | **74.9 -> 75** |
+| **Composite** | | | **74.9** |
 
-Composite rounds to **75**. Grade: **C** (70-79 range).
-
-**Complete rule trace for this example (2 errors, 8 warnings):**
-
-Errors:
-1. E030 — Unknown field in frontmatter
-2. E031 — File reference points to nonexistent file
-
-Warnings:
-1. W003 — Description is very short (< 50 chars)
-2. W004 — Description lacks trigger language
-3. W021 — Body contains generic filler content
-4. W026 — Scripts lack error handling (`set -e`)
-5. W028 — Scripts lack `--help`/usage docs
-
-Info (score inputs, not counted as warnings):
-1. I015 — Keyword diversity < 2 trigger scenarios
-2. I016 — Progressive disclosure ratio is 0%
-3. I005 — No gotchas/pitfalls section
-4. I006 — No validation/verification step
-5. I002 — No `references/` directory (note: the worked example for Discoverability says DS2 passes — see reconciliation below)
-
-**Reconciliation note:** The per-category worked examples describe a *single hypothetical skill* with these combined properties: has an unknown field "autor", references nonexistent `scripts/deploy.sh`, has a 38-char description with no trigger language but imperative voice with action verbs covering 1 scenario, has 200 lines/2000 tokens, no referenced files, has headings but generic filler and no placeholders, has scripts without `set -e` or `--help`, and has a LICENSE file + references dir but no gotchas or validation section. The exact diagnostics that fire:
-
-| # | Rule | Severity | Category |
-|---|------|----------|----------|
-| 1 | E030 | Error | Spec Compliance |
-| 2 | E031 | Error | Spec Compliance |
-| 3 | W003 | Warning | Description Quality |
-| 4 | W004 | Warning | Description Quality |
-| 5 | W021 | Warning | Composability & Clarity |
-| 6 | W026 | Warning | Script Quality |
-| 7 | W028 | Warning | Script Quality |
-| 8 | I015 | Info | Description Quality |
-| 9 | I016 | Info | Content Efficiency |
-| 10 | I005 | Info | Discoverability |
-| 11 | I006 | Info | Discoverability |
-
-**Total: 2 errors, 5 warnings, 4 info. Terminal summary line shows "5 warnings, 2 errors"** (info-severity diagnostics are not counted in the warning/error tallies but do affect scoring).
+Grade: **C** (70-79 range)
 
 ### Score Model
 
@@ -535,7 +464,7 @@ struct RuleResult {
 enum Grade { A, B, C, D, F }
 ```
 
-Default grade boundaries (configurable in `.skillplane.toml`). Grade is assigned from the **rounded** composite score:
+Default grade boundaries (configurable in `.skillplane.toml`):
 - A: 90-100
 - B: 80-89
 - C: 70-79
@@ -643,8 +572,6 @@ Precedence: `1` > `2` > `3`. If both errors exist and score is below threshold, 
 
 ### Terminal Output
 
-Matches the end-to-end worked example (2 errors, 5 warnings, 4 info):
-
 ```
 skillplane v0.1.0 — my-skill
 
@@ -657,18 +584,14 @@ skillplane v0.1.0 — my-skill
   Script Quality     ████████████░░░░░░░░   60%   (6.0/10)
   Discoverability    ██████████░░░░░░░░░░   50%   (2.5/5)
 
-  5 warnings, 2 errors
+  8 warnings, 2 errors
 
   E030  SKILL.md:1   Unknown field "autor" in frontmatter
   E031  SKILL.md:45  File reference "scripts/deploy.sh" does not exist
   W003  SKILL.md:2   Description is very short (38 chars, recommend >= 50)
   W004  SKILL.md:2   Description lacks trigger language ("Use when...")
-  W021  SKILL.md:18  Body contains generic filler content (2 filler phrases detected)
-  W026  scripts/build.sh:1  Bash script lacks "set -e" or equivalent error handling
-  W028  scripts/build.sh:1  Script has no --help or usage documentation
+  W024  —            references/api.md exists but is not referenced in SKILL.md
 ```
-
-Info-severity diagnostics (I015, I016, I005, I006) affect scoring but are not printed in default terminal output. Use `--format json` or `-v` (verbose, if implemented) to see all diagnostics including info.
 
 ### Usage Examples
 
@@ -824,23 +747,6 @@ repos:
 ```
 
 Requires `skillplane` binary on `PATH` (via `cargo install skillplane`).
-
-## Implementation Order
-
-Recommended build sequence for Tier 1 (v0.1). Each phase builds on the previous one and produces a testable milestone.
-
-| Phase | Components | Milestone |
-|-------|-----------|-----------|
-| **1. Parse** | `model.rs`, `parser.rs` | Can parse any SKILL.md into a `Skill` struct; snapshot tests for valid/malformed inputs |
-| **2. Validate** | `validator.rs` (E001-E035), `diagnostics model` | Runs all spec-compliance checks; produces `Vec<Diagnostic>` |
-| **3. Lint** | `linter.rs` (W001-W028), `discovery.rs` | Adds best-practice warnings; can discover and lint a directory tree |
-| **4. Score** | `scorer.rs`, `config.rs` | Computes composite score + grade; loads `.skillplane.toml` for weight/grade overrides |
-| **5. Output** | `terminal.rs`, `json.rs`, `sarif.rs`, `markdown.rs` | All four output formats working |
-| **6. CLI** | `main.rs` (clap), exit codes, `--format`/`--min-score`/`--fail-on`/`--disable` flags | Fully usable CLI binary |
-| **7. Fix** | `fixer.rs`, `--fix`/`--dry-run` | Auto-repair for the 6 fixable rules |
-| **8. Distribute** | `action.yml`, `.pre-commit-hooks.yaml`, CI release pipeline | GitHub Action + pre-commit hook + binary releases |
-
-Within each phase, implement rules in order of their rule ID (E001 before E002, etc.). Write tests alongside each rule using fixture skills in `tests/fixtures/`.
 
 ## Rust Dependencies
 
@@ -1007,185 +913,6 @@ Detection method:
 4. The rule fires when `ratio == 0.0` (i.e., `referenced_size == 0`).
 
 For scoring purposes (CE3), the check passes when `ratio > 0.0` (any non-zero amount of content in referenced files). The ratio value itself is reported in the I016 info diagnostic message for user visibility (e.g., "Progressive disclosure ratio: 0% of content in referenced files").
-
-## Appendix B: Output Schemas
-
-### JSON Output
-
-Produced by `--format json`. The top-level object contains one entry per skill path. All field names use snake_case.
-
-```json
-{
-  "version": "0.1.0",
-  "skills": [
-    {
-      "path": "skills/my-skill",
-      "score": {
-        "composite": 75,
-        "grade": "C",
-        "categories": [
-          {
-            "name": "spec_compliance",
-            "weight": 0.40,
-            "score": 94.3,
-            "weighted_score": 37.7,
-            "rule_results": [
-              { "rule_id": "E001", "passed": true },
-              { "rule_id": "E030", "passed": false },
-              { "rule_id": "E031", "passed": false }
-            ]
-          }
-        ]
-      },
-      "diagnostics": [
-        {
-          "rule_id": "E030",
-          "severity": "error",
-          "message": "Unknown field \"autor\" in frontmatter",
-          "path": "skills/my-skill/SKILL.md",
-          "span": {
-            "start_line": 1,
-            "start_col": 1,
-            "end_line": 1,
-            "end_col": 20
-          },
-          "fix_available": false,
-          "category": "spec_compliance"
-        },
-        {
-          "rule_id": "E001",
-          "severity": "error",
-          "message": "SKILL.md file missing",
-          "path": "skills/other-skill",
-          "span": null,
-          "fix_available": false,
-          "category": "spec_compliance"
-        }
-      ],
-      "summary": {
-        "errors": 2,
-        "warnings": 5,
-        "info": 4
-      }
-    }
-  ]
-}
-```
-
-Field types:
-- `version`: string — skillplane version that produced the output
-- `skills[].score.composite`: integer — rounded composite score (0-100)
-- `skills[].score.grade`: string — one of "A", "B", "C", "D", "F"
-- `skills[].score.categories[].score`: float — per-category percentage (0.0-100.0)
-- `skills[].score.categories[].weighted_score`: float — score * weight
-- `skills[].diagnostics[].span`: object | null — null for structural rules (E001, E033)
-- `skills[].diagnostics[].severity`: string — one of "error", "warning", "info"
-- `skills[].diagnostics[].category`: string — snake_case category name
-
-### SARIF Output
-
-Produced by `--format sarif`. Conforms to SARIF v2.1.0 for GitHub code scanning integration.
-
-```json
-{
-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/main/sarif-2.1/schema/sarif-schema-2.1.0.json",
-  "version": "2.1.0",
-  "runs": [
-    {
-      "tool": {
-        "driver": {
-          "name": "skillplane",
-          "version": "0.1.0",
-          "informationUri": "https://github.com/your-org/skillplane",
-          "rules": [
-            {
-              "id": "E030",
-              "shortDescription": { "text": "Unknown/unexpected fields in frontmatter" },
-              "defaultConfiguration": { "level": "error" }
-            }
-          ]
-        }
-      },
-      "results": [
-        {
-          "ruleId": "E030",
-          "level": "error",
-          "message": { "text": "Unknown field \"autor\" in frontmatter" },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": { "uri": "skills/my-skill/SKILL.md" },
-                "region": {
-                  "startLine": 1,
-                  "startColumn": 1,
-                  "endLine": 1,
-                  "endColumn": 20
-                }
-              }
-            }
-          ]
-        },
-        {
-          "ruleId": "E001",
-          "level": "error",
-          "message": { "text": "SKILL.md file missing" },
-          "locations": [
-            {
-              "physicalLocation": {
-                "artifactLocation": { "uri": "skills/other-skill" }
-              }
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
-```
-
-Key mapping details:
-- `rule_id` maps to SARIF `ruleId` (e.g., "E030")
-- `Severity::Error` maps to SARIF `level: "error"`, `Warning` to `"warning"`, `Info` to `"note"`
-- When `span` is `None` (structural rules E001, E033): the SARIF `location` omits the `region` property entirely, using only `artifactLocation` with the directory path
-- When `span` is `Some`: the `region` object maps `start_line`/`start_col`/`end_line`/`end_col` to SARIF's `startLine`/`startColumn`/`endLine`/`endColumn`
-
-### Markdown Output
-
-Produced by `--format markdown`. Designed for GitHub job summaries and PR comments.
-
-```markdown
-## Skillplane Report — my-skill
-
-**Score: 75/100 (C)**
-
-| Category | Score | Weighted |
-|----------|-------|----------|
-| Spec Compliance | 94% | 37.7/40 |
-| Description Quality | 50% | 10.0/20 |
-| Content Efficiency | 80% | 12.0/15 |
-| Composability & Clarity | 67% | 6.7/10 |
-| Script Quality | 60% | 6.0/10 |
-| Discoverability | 50% | 2.5/5 |
-
-### Errors (2)
-
-| Rule | Location | Message |
-|------|----------|---------|
-| E030 | `SKILL.md:1` | Unknown field "autor" in frontmatter |
-| E031 | `SKILL.md:45` | File reference "scripts/deploy.sh" does not exist |
-
-### Warnings (5)
-
-| Rule | Location | Message |
-|------|----------|---------|
-| W003 | `SKILL.md:2` | Description is very short (38 chars, recommend >= 50) |
-| W004 | `SKILL.md:2` | Description lacks trigger language ("Use when...") |
-| W021 | `SKILL.md:18` | Body contains generic filler content (2 filler phrases detected) |
-| W026 | `scripts/build.sh:1` | Bash script lacks "set -e" or equivalent error handling |
-| W028 | `scripts/build.sh:1` | Script has no --help or usage documentation |
-```
-
-For multi-skill repos, each skill gets its own H2 section, followed by an aggregate summary section.
 
 ## References
 

@@ -8,3 +8,6 @@ description = "CLI for skillplane — Agent Skills linter, validator, and scorer
 
 [dependencies]
 skillplane-core = { path = "../skillplane-core" }
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+toml = "0.8"

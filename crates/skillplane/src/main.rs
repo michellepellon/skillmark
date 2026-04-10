@@ -6,6 +6,7 @@ use colored::control::set_override;
 
 use skillplane_core::config::{Config, FailOn, OutputFormat};
 use skillplane_core::discovery::{discover_skills, load_skill};
+use skillplane_core::fixer::fix_skill;
 use skillplane_core::linter::lint;
 use skillplane_core::model::{Diagnostic, Severity};
 use skillplane_core::output::json::format_json;
@@ -375,8 +376,17 @@ fn main() {
     match &cli.command {
         Commands::Check { paths, fix } => {
             if *fix {
-                println!("Fix mode not yet implemented. Use `skillplane check` to validate.");
-                process::exit(0);
+                // Run fix first, then fall through to check
+                let skill_dirs = resolve_skill_dirs(paths);
+                for skill_dir in &skill_dirs {
+                    let result = fix_skill(skill_dir, false);
+                    if result.changed {
+                        println!("Fixed {}:", skill_dir.display());
+                        for f in &result.fixes_applied {
+                            println!("  - {f}");
+                        }
+                    }
+                }
             }
 
             let reports = run_check(paths, &config, cli.no_score, cli.quiet);
@@ -385,9 +395,40 @@ fn main() {
             let code = determine_exit_code(&reports, &config);
             process::exit(code);
         }
-        Commands::Fix { .. } => {
-            println!("Fix mode not yet implemented. Use `skillplane check` to validate.");
-            process::exit(0);
+        Commands::Fix { paths, dry_run } => {
+            let skill_dirs = resolve_skill_dirs(paths);
+            if skill_dirs.is_empty() {
+                eprintln!("No skills found.");
+                process::exit(3);
+            }
+
+            for skill_dir in &skill_dirs {
+                let result = fix_skill(skill_dir, *dry_run);
+                if result.changed {
+                    if *dry_run {
+                        println!("[dry-run] {}:", skill_dir.display());
+                    } else {
+                        println!("Fixed {}:", skill_dir.display());
+                    }
+                    for fix in &result.fixes_applied {
+                        println!("  - {fix}");
+                    }
+                    if *dry_run {
+                        if let Some(preview) = &result.new_content {
+                            println!("  Preview:\n{}", preview);
+                        }
+                    }
+                } else {
+                    println!("No fixes needed: {}", skill_dir.display());
+                }
+            }
+
+            // Re-run validate + lint + score and output results
+            let reports = run_check(paths, &config, cli.no_score, cli.quiet);
+            let output = format_output(&reports, &config, cli.quiet);
+            print!("{output}");
+            let code = determine_exit_code(&reports, &config);
+            process::exit(code);
         }
     }
 }

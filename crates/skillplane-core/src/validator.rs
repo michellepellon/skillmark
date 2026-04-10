@@ -154,7 +154,7 @@ pub fn validate(skill_dir: &Path) -> Vec<Diagnostic> {
         Err(e) => {
             let (rule_id, fix) = match &e {
                 ParseError::MissingFrontmatter => ("E003", true),
-                ParseError::InvalidYaml(_) => ("E003", false),
+                ParseError::InvalidYaml(_) => ("E003", true),
                 ParseError::UnclosedFrontmatter => ("E032", true),
                 ParseError::NotAMapping => ("E004", false),
             };
@@ -302,10 +302,10 @@ fn validate_name(
     }
 
     // E008: > 64 chars
-    if name_val.len() > 64 {
+    if name_val.chars().count() > 64 {
         diagnostics.push(diag(
             "E008",
-            format!("name exceeds 64 characters ({})", name_val.len()),
+            format!("name exceeds 64 characters ({})", name_val.chars().count()),
             path,
             None,
             false,
@@ -419,10 +419,10 @@ fn validate_description(
             None,
             false,
         ));
-    } else if desc.len() > 1024 {
+    } else if desc.chars().count() > 1024 {
         diagnostics.push(diag(
             "E016",
-            format!("description exceeds 1024 characters ({})", desc.len()),
+            format!("description exceeds 1024 characters ({})", desc.chars().count()),
             path,
             None,
             false,
@@ -457,19 +457,19 @@ fn validate_compatibility(
     }
 
     // E017: > 500 chars
-    if compat.len() > 500 {
+    if compat.chars().count() > 500 {
         diagnostics.push(diag(
             "E017",
-            format!("compatibility exceeds 500 characters ({})", compat.len()),
+            format!("compatibility exceeds 500 characters ({})", compat.chars().count()),
             path,
             None,
             false,
         ));
     }
 
-    // E018: Note — if compatibility is a non-string, the parser puts it in unknown_fields.
-    // So E018 can only fire when the parser explicitly extracts a non-string.
-    // Since our parser only extracts strings, this is effectively unreachable here.
+    // NOTE: E018/E020 are currently unreachable — the parser extracts these
+    // fields as Option<String>, so non-string values silently become None.
+    // This is an accepted limitation per the design spec.
 }
 
 // ---------------------------------------------------------------------------
@@ -497,7 +497,9 @@ fn validate_license(
         ));
     }
 
-    // E020: non-string — same note as E018
+    // NOTE: E018/E020 are currently unreachable — the parser extracts these
+    // fields as Option<String>, so non-string values silently become None.
+    // This is an accepted limitation per the design spec.
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,107 @@
+name: 'Skillplane'
+description: 'Lint, validate, and score Agent Skills (SKILL.md)'
+author: 'skillplane'
+
+branding:
+  icon: 'check-square'
+  color: 'blue'
+
+inputs:
+  paths:
+    description: 'Space-separated paths to check'
+    required: false
+    default: '.'
+  min-score:
+    description: 'Minimum composite score (0-100)'
+    required: false
+  fail-on:
+    description: 'errors | warnings | none'
+    required: false
+    default: 'errors'
+  format:
+    description: 'terminal | json | sarif | markdown'
+    required: false
+    default: 'terminal'
+  version:
+    description: 'Skillplane version to install'
+    required: false
+    default: 'latest'
+  experimental:
+    description: 'Enable Tier 2 heuristic rules'
+    required: false
+    default: 'false'
+
+outputs:
+  score:
+    description: 'Composite score (0-100)'
+    value: ${{ steps.run.outputs.score }}
+  grade:
+    description: 'Letter grade (A-F)'
+    value: ${{ steps.run.outputs.grade }}
+  errors:
+    description: 'Error count'
+    value: ${{ steps.run.outputs.errors }}
+  warnings:
+    description: 'Warning count'
+    value: ${{ steps.run.outputs.warnings }}
+  valid:
+    description: 'true if no errors'
+    value: ${{ steps.run.outputs.valid }}
+  summary:
+    description: 'Markdown summary (when format=markdown)'
+    value: ${{ steps.run.outputs.summary }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install skillplane
+      shell: bash
+      run: |
+        VERSION="${{ inputs.version }}"
+        if [ "$VERSION" = "latest" ]; then
+          cargo install skillplane
+        else
+          cargo install skillplane --version "$VERSION"
+        fi
+
+    - name: Run skillplane
+      id: run
+      shell: bash
+      run: |
+        ARGS="check ${{ inputs.paths }}"
+        ARGS="$ARGS --format ${{ inputs.format }}"
+        ARGS="$ARGS --fail-on ${{ inputs.fail-on }}"
+        ARGS="$ARGS --color never"
+
+        if [ -n "${{ inputs.min-score }}" ]; then
+          ARGS="$ARGS --min-score ${{ inputs.min-score }}"
+        fi
+
+        if [ "${{ inputs.experimental }}" = "true" ]; then
+          ARGS="$ARGS --experimental"
+        fi
+
+        OUTPUT=$(skillplane $ARGS 2>&1) || EXIT_CODE=$?
+        echo "$OUTPUT"
+
+        # Extract score from JSON output for outputs
+        if [ "${{ inputs.format }}" = "json" ]; then
+          SCORE=$(echo "$OUTPUT" | jq -r '.skills[0].score.composite // empty' 2>/dev/null || true)
+          GRADE=$(echo "$OUTPUT" | jq -r '.skills[0].score.grade // empty' 2>/dev/null || true)
+          ERRORS=$(echo "$OUTPUT" | jq -r '.skills[0].summary.errors // 0' 2>/dev/null || true)
+          WARNINGS=$(echo "$OUTPUT" | jq -r '.skills[0].summary.warnings // 0' 2>/dev/null || true)
+
+          echo "score=$SCORE" >> $GITHUB_OUTPUT
+          echo "grade=$GRADE" >> $GITHUB_OUTPUT
+          echo "errors=$ERRORS" >> $GITHUB_OUTPUT
+          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+          echo "valid=$( [ "${ERRORS:-0}" = "0" ] && echo true || echo false )" >> $GITHUB_OUTPUT
+        fi
+
+        if [ "${{ inputs.format }}" = "markdown" ]; then
+          echo "summary<<EOF" >> $GITHUB_OUTPUT
+          echo "$OUTPUT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        fi
+
+        exit ${EXIT_CODE:-0}

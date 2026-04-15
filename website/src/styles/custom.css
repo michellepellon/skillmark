@@ -1,0 +1,42 @@
+/* ABOUTME: Custom Starlight theme overrides for skillmark docs.
+   ABOUTME: Dark minimal palette with warm rust accent inspired by 2389.ai. */
+
+/* Dark minimal theme with warm rust accent inspired by 2389.ai */
+
+:root {
+  --sl-color-accent-low: #2a1508;
+  --sl-color-accent: #bf4a24;
+  --sl-color-accent-high: #e8a48e;
+  --sl-color-white: #fafafa;
+  --sl-color-gray-1: #e5e5e5;
+  --sl-color-gray-2: #a3a3a3;
+  --sl-color-gray-3: #737373;
+  --sl-color-gray-4: #333333;
+  --sl-color-gray-5: #1a1a1a;
+  --sl-color-gray-6: #0f0f0f;
+  --sl-color-black: #0a0a0a;
+  --sl-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --sl-font-mono: 'SF Mono', 'Fira Code', 'Fira Mono', Menlo, Consolas, monospace;
+}
+
+:root[data-theme='light'] {
+  --sl-color-accent-low: #f5e6df;
+  --sl-color-accent: #bf4a24;
+  --sl-color-accent-high: #6b2a14;
+  --sl-color-white: #1a1a1a;
+  --sl-color-gray-1: #333333;
+  --sl-color-gray-2: #737373;
+  --sl-color-gray-3: #a3a3a3;
+  --sl-color-gray-4: #d4d4d4;
+  --sl-color-gray-5: #f0f0f0;
+  --sl-color-gray-6: #f7f7f7;
+  --sl-color-black: #fafaf9;
+}
+
+/* Tighter heading letter-spacing */
+.sl-markdown-content h1 {
+  letter-spacing: -0.5px;
+}
+.sl-markdown-content h2 {
+  letter-spacing: -0.3px;
+}
